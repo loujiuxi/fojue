@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fojue</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a}
+.bg{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:1}
+.vignette{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.45) 100%)}
+#inkChart{position:fixed;left:5%;bottom:12%;width:52%;max-width:720px;height:24%;max-height:260px;z-index:3;pointer-events:none;opacity:0;animation:fadeIn 3s ease forwards 1.5s,breathe 9s ease-in-out infinite 4.5s}
+@media(max-width:768px){#inkChart{width:72%;height:20%;bottom:15%;left:14%}}
+@keyframes fadeIn{from{opacity:0}to{opacity:.55}}
+@keyframes breathe{0%,100%{opacity:.5}50%{opacity:.64}}
+</style>
+</head>
+<body>
+<img class="bg" src="fojue-practitioner.png" alt="">
+<div class="vignette"></div>
+<canvas id="inkChart"></canvas>
+<script>
+(function(){
+var canvas=document.getElementById('inkChart');
+var ctx=canvas.getContext('2d');
+var candles=[];
+var W=0,H=0;
+
+function resize(){
+  var dpr=window.devicePixelRatio||1;
+  var r=canvas.getBoundingClientRect();
+  W=r.width;H=r.height;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  render();
+}
+
+function sRand(s){var x=Math.sin(s*12.9898)*43758.5453;return x-Math.floor(x);}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  if(!candles.length)return;
+  var pad={t:14,b:14,l:8,r:8};
+  var cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  var mx=-Infinity,mn=Infinity;
+  for(var i=0;i<candles.length;i++){
+    if(candles[i].h>mx)mx=candles[i].h;
+    if(candles[i].l<mn)mn=candles[i].l;
+  }
+  var rng=mx-mn||1;
+  var step=cw/candles.length;
+  var bw=step*0.55;
+  var yS=function(p){return pad.t+ch-((p-mn)/rng)*ch;};
+
+  for(var i=0;i<candles.length;i++){
+    var c=candles[i];
+    var x=pad.l+i*step+step/2;
+    drawCandle(x,yS(c.o),yS(c.c),yS(c.h),yS(c.l),bw,c.bull);
+  }
+  // ink splatter near last 3 candles
+  for(var j=Math.max(0,candles.length-3);j<candles.length;j++){
+    var c2=candles[j];
+    var x2=pad.l+j*step+step/2;
+    drawSplatter(x2,yS(c2.c),j+100);
+  }
+  applyMist();
+}
+
+function drawCandle(x,oC,cl,h,l,w,bull){
+  // wick: outer ink bleed + inner core
+  ctx.save();
+  ctx.lineCap='round';
+  ctx.strokeStyle='rgba(18,18,18,0.12)';
+  ctx.lineWidth=2.8;
+  ctx.shadowBlur=3;
+  ctx.shadowColor='rgba(18,18,18,0.18)';
+  ctx.beginPath();ctx.moveTo(x,h);ctx.lineTo(x,l);ctx.stroke();
+  ctx.strokeStyle='rgba(22,22,22,0.38)';
+  ctx.lineWidth=1.1;
+  ctx.shadowBlur=0;
+  ctx.beginPath();ctx.moveTo(x,h);ctx.lineTo(x,l);ctx.stroke();
+  ctx.restore();
+
+  // body
+  var bt=Math.min(oC,cl),bb=Math.max(oC,cl);
+  var bh=Math.max(bb-bt,1.5);
+  ctx.save();
+  if(bull){
+    // 空阳 - hollow
+    ctx.strokeStyle='rgba(25,25,25,0.42)';
+    ctx.lineWidth=1.2;
+    ctx.shadowBlur=2;
+    ctx.shadowColor='rgba(20,20,20,0.18)';
+    ctx.strokeRect(x-w/2,bt,w,bh);
+  }else{
+    // 墨阴 - ink wash fill
+    var g=ctx.createLinearGradient(x-w/2,bt,x-w/2,bb);
+    g.addColorStop(0,'rgba(12,12,12,0.42)');
+    g.addColorStop(0.5,'rgba(22,22,22,0.55)');
+    g.addColorStop(1,'rgba(12,12,12,0.38)');
+    ctx.shadowBlur=4;
+    ctx.shadowColor='rgba(15,15,15,0.32)';
+    ctx.fillStyle=g;
+    ctx.fillRect(x-w/2,bt,w,bh);
+  }
+  ctx.restore();
+}
+
+function drawSplatter(x,y,seed){
+  ctx.save();
+  for(var i=0;i<6;i++){
+    var a=sRand(seed+i*7),b=sRand(seed+i*13+3);
+    var dx=(a-0.5)*26,dy=(b-0.5)*26;
+    var r=a*1.6+0.3;
+    ctx.beginPath();
+    ctx.arc(x+dx,y+dy,r,0,Math.PI*2);
+    ctx.fillStyle='rgba(15,15,15,'+(0.03+a*0.07)+')';
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function applyMist(){
+  ctx.save();
+  ctx.globalCompositeOperation='destination-out';
+  var g;
+  g=ctx.createLinearGradient(0,0,0,H*0.18);
+  g.addColorStop(0,'rgba(0,0,0,0.85)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H*0.18);
+  g=ctx.createLinearGradient(0,H*0.82,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.85)');
+  ctx.fillStyle=g;ctx.fillRect(0,H*0.82,W,H*0.18);
+  g=ctx.createLinearGradient(0,0,W*0.08,0);
+  g.addColorStop(0,'rgba(0,0,0,0.6)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W*0.08,H);
+  g=ctx.createLinearGradient(W*0.92,0,W,0);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.6)');
+  ctx.fillStyle=g;ctx.fillRect(W*0.92,0,W*0.08,H);
+  ctx.restore();
+}
+
+function parseCandles(arr){
+  return arr.map(function(r){
+    var o=parseFloat(r[1]),c=parseFloat(r[4]);
+    return{h:parseFloat(r[2]),l:parseFloat(r[3]),o:o,c:c,bull:c>=o};
+  });
+}
+
+function fetchData(){
+  var endpoints=[
+    'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=40',
+    'https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=40',
+    'https://api1.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=40'
+  ];
+  return new Promise(function(resolve){
+    var idx=0;
+    function tryNext(){
+      if(idx>=endpoints.length){resolve([]);return;}
+      fetch(endpoints[idx])
+        .then(function(r){return r.json();})
+        .then(function(d){
+          if(d&&d.length){resolve(parseCandles(d));}
+          else{idx++;tryNext();}
+        })
+        .catch(function(){idx++;tryNext();});
+    }
+    tryNext();
+  });
+}
+
+function init(){
+  resize();
+  window.addEventListener('resize',resize);
+  fetchData().then(function(data){
+    if(data.length){candles=data;render();}
+  });
+  setInterval(function(){
+    fetchData().then(function(data){
+      if(data.length){candles=data;render();}
+    });
+  },60000);
+}
+
+init();
+})();
+</script>
+</body>
+</html>
