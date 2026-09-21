@@ -2,17 +2,45 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
 <title>fojue</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0a}
-.bg{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:1}
+.bg{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;object-position:center center;z-index:1}
 .vignette{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.45) 100%)}
 #inkChart{position:fixed;left:5%;bottom:12%;width:52%;max-width:720px;height:24%;max-height:260px;z-index:3;pointer-events:none;opacity:0;animation:fadeIn 3s ease forwards 1.5s,breathe 9s ease-in-out infinite 4.5s}
-@media(max-width:768px){#inkChart{width:72%;height:20%;bottom:15%;left:14%}}
-@keyframes fadeIn{from{opacity:0}to{opacity:.55}}
-@keyframes breathe{0%,100%{opacity:.5}50%{opacity:.64}}
+
+/* 平板 */
+@media(max-width:1024px) and (orientation:portrait){
+  .bg{object-fit:contain;object-position:center 80%}
+  #inkChart{width:80%;left:10%;bottom:10%;height:22%}
+}
+
+/* 手机竖屏 */
+@media(max-width:768px) and (orientation:portrait){
+  .bg{object-fit:contain;object-position:center 85%}
+  .vignette{background:radial-gradient(ellipse at center 40%,transparent 45%,rgba(0,0,0,.6) 100%)}
+  #inkChart{width:88%;left:6%;bottom:8%;height:18%;max-height:180px}
+}
+
+/* 手机横屏 */
+@media(max-width:900px) and (orientation:landscape){
+  .bg{object-fit:cover;object-position:center center}
+  #inkChart{width:60%;left:4%;bottom:10%;height:26%;max-height:200px}
+}
+
+/* 超小屏 */
+@media(max-width:380px){
+  .bg{object-fit:contain;object-position:center 90%}
+  #inkChart{width:92%;left:4%;bottom:6%;height:16%;max-height:140px}
+}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes breathe{0%,100%{opacity:.92}50%{opacity:1}}
 </style>
 </head>
 <body>
@@ -39,7 +67,7 @@ function sRand(s){var x=Math.sin(s*12.9898)*43758.5453;return x-Math.floor(x);}
 
 function render(){
   ctx.clearRect(0,0,W,H);
-  if(!candles.length)return;
+  if(!candles.length||W<2||H<2)return;
   var pad={t:14,b:14,l:8,r:8};
   var cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   var mx=-Infinity,mn=Infinity;
@@ -57,7 +85,7 @@ function render(){
     var x=pad.l+i*step+step/2;
     drawCandle(x,yS(c.o),yS(c.c),yS(c.h),yS(c.l),bw,c.bull);
   }
-  // ink splatter near last 3 candles
+  /* ink splatter near last 3 candles */
   for(var j=Math.max(0,candles.length-3);j<candles.length;j++){
     var c2=candles[j];
     var x2=pad.l+j*step+step/2;
@@ -67,39 +95,41 @@ function render(){
 }
 
 function drawCandle(x,oC,cl,h,l,w,bull){
-  // wick: outer ink bleed + inner core
+  /* wick: white ink bleed + inner core */
   ctx.save();
   ctx.lineCap='round';
-  ctx.strokeStyle='rgba(18,18,18,0.12)';
-  ctx.lineWidth=2.8;
-  ctx.shadowBlur=3;
-  ctx.shadowColor='rgba(18,18,18,0.18)';
+  /* outer bleed - soft white halo */
+  ctx.strokeStyle='rgba(245,240,230,0.35)';
+  ctx.lineWidth=4;
+  ctx.shadowBlur=6;
+  ctx.shadowColor='rgba(245,240,230,0.4)';
   ctx.beginPath();ctx.moveTo(x,h);ctx.lineTo(x,l);ctx.stroke();
-  ctx.strokeStyle='rgba(22,22,22,0.38)';
-  ctx.lineWidth=1.1;
+  /* inner wick core */
+  ctx.strokeStyle='rgba(250,245,235,0.9)';
+  ctx.lineWidth=1.5;
   ctx.shadowBlur=0;
   ctx.beginPath();ctx.moveTo(x,h);ctx.lineTo(x,l);ctx.stroke();
   ctx.restore();
 
-  // body
+  /* body */
   var bt=Math.min(oC,cl),bb=Math.max(oC,cl);
-  var bh=Math.max(bb-bt,1.5);
+  var bh=Math.max(bb-bt,2);
   ctx.save();
   if(bull){
-    // 空阳 - hollow
-    ctx.strokeStyle='rgba(25,25,25,0.42)';
-    ctx.lineWidth=1.2;
-    ctx.shadowBlur=2;
-    ctx.shadowColor='rgba(20,20,20,0.18)';
+    /* 空阳 - hollow with bright stroke */
+    ctx.strokeStyle='rgba(250,245,235,0.95)';
+    ctx.lineWidth=2;
+    ctx.shadowBlur=4;
+    ctx.shadowColor='rgba(245,240,230,0.5)';
     ctx.strokeRect(x-w/2,bt,w,bh);
   }else{
-    // 墨阴 - ink wash fill
+    /* 墨阴 - white ink wash fill */
     var g=ctx.createLinearGradient(x-w/2,bt,x-w/2,bb);
-    g.addColorStop(0,'rgba(12,12,12,0.42)');
-    g.addColorStop(0.5,'rgba(22,22,22,0.55)');
-    g.addColorStop(1,'rgba(12,12,12,0.38)');
-    ctx.shadowBlur=4;
-    ctx.shadowColor='rgba(15,15,15,0.32)';
+    g.addColorStop(0,'rgba(230,225,210,0.8)');
+    g.addColorStop(0.5,'rgba(245,240,230,0.95)');
+    g.addColorStop(1,'rgba(230,225,210,0.75)');
+    ctx.shadowBlur=7;
+    ctx.shadowColor='rgba(245,240,230,0.6)';
     ctx.fillStyle=g;
     ctx.fillRect(x-w/2,bt,w,bh);
   }
@@ -110,75 +140,95 @@ function drawSplatter(x,y,seed){
   ctx.save();
   for(var i=0;i<6;i++){
     var a=sRand(seed+i*7),b=sRand(seed+i*13+3);
-    var dx=(a-0.5)*26,dy=(b-0.5)*26;
-    var r=a*1.6+0.3;
+    var dx=(a-0.5)*30,dy=(b-0.5)*30;
+    var r=a*2.2+0.5;
     ctx.beginPath();
     ctx.arc(x+dx,y+dy,r,0,Math.PI*2);
-    ctx.fillStyle='rgba(15,15,15,'+(0.03+a*0.07)+')';
+    ctx.fillStyle='rgba(245,240,230,'+(0.12+a*0.2)+')';
     ctx.fill();
   }
   ctx.restore();
 }
 
 function applyMist(){
+  /* four-edge fog fade - ink emerging from mist */
   ctx.save();
   ctx.globalCompositeOperation='destination-out';
   var g;
-  g=ctx.createLinearGradient(0,0,0,H*0.18);
-  g.addColorStop(0,'rgba(0,0,0,0.85)');g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H*0.18);
-  g=ctx.createLinearGradient(0,H*0.82,0,H);
-  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.85)');
-  ctx.fillStyle=g;ctx.fillRect(0,H*0.82,W,H*0.18);
-  g=ctx.createLinearGradient(0,0,W*0.08,0);
-  g.addColorStop(0,'rgba(0,0,0,0.6)');g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=g;ctx.fillRect(0,0,W*0.08,H);
-  g=ctx.createLinearGradient(W*0.92,0,W,0);
-  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.6)');
-  ctx.fillStyle=g;ctx.fillRect(W*0.92,0,W*0.08,H);
+  /* top fade */
+  g=ctx.createLinearGradient(0,0,0,H*0.2);
+  g.addColorStop(0,'rgba(0,0,0,0.9)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H*0.2);
+  /* bottom fade */
+  g=ctx.createLinearGradient(0,H*0.8,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.9)');
+  ctx.fillStyle=g;ctx.fillRect(0,H*0.8,W,H*0.2);
+  /* left fade */
+  g=ctx.createLinearGradient(0,0,W*0.1,0);
+  g.addColorStop(0,'rgba(0,0,0,0.65)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W*0.1,H);
+  /* right fade */
+  g=ctx.createLinearGradient(W*0.9,0,W,0);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.65)');
+  ctx.fillStyle=g;ctx.fillRect(W*0.9,0,W*0.1,H);
   ctx.restore();
 }
 
-function parseCandles(arr){
-  return arr.map(function(r){
-    var o=parseFloat(r[1]),c=parseFloat(r[4]);
-    return{h:parseFloat(r[2]),l:parseFloat(r[3]),o:o,c:c,bull:c>=o};
-  });
-}
-
-function fetchData(){
-  var endpoints=[
-    'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=40',
-    'https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=40',
-    'https://api1.binance.com/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=40'
+/* 固定数据：30 根 K 线，两个波峰（前小后大），整体上涨趋势 */
+function genCandles(){
+  /* [open, high, low, close] */
+  var raw=[
+    /* 第一波：缓涨到小波峰 */
+    [100,103, 98,102],
+    [102,105,100,104],
+    [104,107,102,106],
+    [106,109,103,108],
+    [108,112,106,111],
+    [111,115,109,114],
+    [114,118,112,117],
+    [117,121,114,116],
+    [116,122,115,121],
+    [121,126,119,125],
+    /* 回撤 */
+    [125,127,121,122],
+    [122,124,118,119],
+    [119,121,116,117],
+    [117,119,114,115],
+    [115,117,112,113],
+    /* 第二波：加速上涨到大波峰 */
+    [113,116,112,115],
+    [115,119,114,118],
+    [118,123,117,122],
+    [122,128,121,127],
+    [127,134,126,133],
+    [133,140,131,139],
+    [139,146,137,145],
+    [145,153,143,152],
+    [152,160,150,159],
+    [159,168,156,167],
+    [167,176,165,175],
+    [175,185,173,184],
+    [184,194,182,193],
+    [193,204,191,203],
+    [203,216,201,215]
   ];
-  return new Promise(function(resolve){
-    var idx=0;
-    function tryNext(){
-      if(idx>=endpoints.length){resolve([]);return;}
-      fetch(endpoints[idx])
-        .then(function(r){return r.json();})
-        .then(function(d){
-          if(d&&d.length){resolve(parseCandles(d));}
-          else{idx++;tryNext();}
-        })
-        .catch(function(){idx++;tryNext();});
-    }
-    tryNext();
+  return raw.map(function(r){
+    var o=r[0],c=r[3];
+    return{h:r[1],l:r[2],o:o,c:c,bull:c>=o};
   });
 }
 
 function init(){
+  candles=genCandles();
   resize();
-  window.addEventListener('resize',resize);
-  fetchData().then(function(data){
-    if(data.length){candles=data;render();}
+  window.addEventListener('resize',function(){
+    candles=genCandles();
+    resize();
   });
-  setInterval(function(){
-    fetchData().then(function(data){
-      if(data.length){candles=data;render();}
-    });
-  },60000);
+  /* re-render on resize for mobile orientation change */
+  window.addEventListener('orientationchange',function(){
+    setTimeout(function(){resize();},300);
+  });
 }
 
 init();
